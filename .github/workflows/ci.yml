@@ -1,0 +1,53 @@
+name: NSH CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/setup-nsh
+      - run: nsh check
+      - run: nsh build
+      - run: nsh test
+  package:
+    needs: validate
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            target: windows
+            arch: x64
+          - os: macos-15
+            target: macos
+            arch: arm64
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/setup-nsh
+      - name: Package
+        shell: bash
+        run: nsh package --target ${{ matrix.target }} -o dist
+      - name: Archive macOS app
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          app="$(find dist -maxdepth 2 -name '*.app' -print -quit)"
+          test -n "$app"
+          ditto -c -k --sequesterRsrc --keepParent "$app" dist/NSH-Studio-macos-arm64.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: NSH-Studio-${{ matrix.target }}-${{ matrix.arch }}
+          path: dist/*.zip
+          if-no-files-found: error
