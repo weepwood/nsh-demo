@@ -1,4 +1,4 @@
-import { Text, View } from "nsh";
+import { Text, View, type JSX } from "nsh";
 import { Button, Input, Checkbox, Switch, Slider, Progress, Select, Tabs, Tab, Dialog } from "nsh/base";
 
 export type Variant = "primary" | "secondary" | "outline" | "ghost" | "danger";

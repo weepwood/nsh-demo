@@ -1,26 +1,49 @@
 name: Desktop release
 on:
   push:
+    branches: [main]
     tags: ['v*']
   workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: desktop-release
+  cancel-in-progress: false
 jobs:
   validate:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
+    outputs:
+      tag: ${{ steps.version.outputs.tag }}
+      publish: ${{ steps.version.outputs.publish }}
     steps:
       - uses: actions/checkout@v6
-      - uses: ./.github/actions/setup-nsh
-      - run: nsh check
-      - run: nsh build
-      - run: nsh test
-      - name: Verify tag matches manifest
-        if: startsWith(github.ref, 'refs/tags/')
+      - id: version
+        env:
+          GH_TOKEN: ${{ github.token }}
         shell: bash
-        run: test "$GITHUB_REF_NAME" = "v$(jq -r .version nsh.json)"
+        run: |
+          set -euo pipefail
+          tag="v$(jq -er .version nsh.json)"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then test "$GITHUB_REF_NAME" = "$tag"; fi
+          # Never replace assets of an already published version.
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: ./.github/actions/setup-nsh
+        if: steps.version.outputs.publish == 'true'
+      - if: steps.version.outputs.publish == 'true'
+        run: nsh check
+      - if: steps.version.outputs.publish == 'true'
+        run: nsh build
+      - if: steps.version.outputs.publish == 'true'
+        run: nsh test
   build:
     needs: validate
+    if: needs.validate.outputs.publish == 'true'
     strategy:
       fail-fast: false
       matrix:
@@ -36,29 +59,61 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: ./.github/actions/setup-nsh
-      - shell: bash
+      - name: Ensure Inno Setup 6
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $iscc = Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6\ISCC.exe'
+          if (!(Test-Path $iscc)) {
+            choco install innosetup --yes --no-progress
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+          if (!(Test-Path $iscc)) { throw "ISCC.exe not found" }
+          (Split-Path $iscc) | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+      - name: Package native app
+        shell: bash
         run: nsh package --target ${{ matrix.target }} -o dist
-      - name: Archive packages
+      - name: Windows installer and portable package
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force release | Out-Null
+          $setup = Get-ChildItem dist -Recurse -File -Filter '*-setup.exe' | Select-Object -First 1
+          if (!$setup) {
+            $iss = Get-ChildItem dist -File -Filter '*.iss' | Select-Object -First 1
+            if (!$iss) { throw 'NSH did not generate an Inno Setup script' }
+            & ISCC.exe $iss.FullName
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            $setup = Get-ChildItem dist -Recurse -File -Filter '*-setup.exe' | Select-Object -First 1
+          }
+          if (!$setup) { throw 'Windows installer was not generated' }
+          $zip = Get-ChildItem dist -File -Filter '*.zip' | Select-Object -First 1
+          if (!$zip) { throw 'Windows portable ZIP was not generated' }
+          Copy-Item $setup.FullName release/NSH-Studio-windows-x64-setup.exe
+          Copy-Item $zip.FullName release/NSH-Studio-windows-x64.zip
+      - name: macOS disk image and archive
+        if: runner.os == 'macOS'
         shell: bash
         run: |
-          mkdir -p release
-          if [ "$RUNNER_OS" = "macOS" ]; then
-            app="$(find dist -maxdepth 2 -name '*.app' -print -quit)"
-            test -n "$app"
-            ditto -c -k --sequesterRsrc --keepParent "$app" release/NSH-Studio-macos-arm64.zip
-          else
-            zip="$(find dist -maxdepth 2 -name '*.zip' -print -quit)"
-            test -n "$zip"
-            cp "$zip" release/NSH-Studio-windows-x64.zip
-          fi
+          set -euo pipefail
+          test "$(uname -m)" = arm64
+          mkdir -p release dmg-root
+          app="$(find dist -maxdepth 2 -name '*.app' -print -quit)"
+          test -n "$app"
+          codesign --verify --deep --strict "$app"
+          ditto -c -k --sequesterRsrc --keepParent "$app" release/NSH-Studio-macos-arm64.zip
+          ditto "$app" "dmg-root/Native Shell Studio.app"
+          ln -s /Applications dmg-root/Applications
+          hdiutil create -volname "Native Shell Studio" -srcfolder dmg-root -ov -format UDZO release/NSH-Studio-macos-arm64.dmg
+          hdiutil verify release/NSH-Studio-macos-arm64.dmg
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.target }}-${{ matrix.arch }}
           path: release/
           if-no-files-found: error
   publish:
-    if: startsWith(github.ref, 'refs/tags/')
-    needs: build
+    if: needs.validate.outputs.publish == 'true'
+    needs: [validate, build]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -67,10 +122,21 @@ jobs:
         with:
           path: release
           merge-multiple: true
-      - name: Checksums and release
+      - name: Publish only complete verified packages
         env:
           GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.validate.outputs.tag }}
+          SOURCE_SHA: ${{ github.sha }}
+        shell: bash
         run: |
+          set -euo pipefail
+          # A newer main commit must run its own validation before release.
+          if [[ "$GITHUB_REF" == refs/heads/main ]]; then
+            head="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq .object.sha)"
+            if [[ "$head" != "$SOURCE_SHA" ]]; then echo "Superseded; skip publication."; exit 0; fi
+          fi
           cd release
-          sha256sum *.zip > SHA256SUMS.txt
-          gh release create "$GITHUB_REF_NAME" *.zip SHA256SUMS.txt --repo "$GITHUB_REPOSITORY" --verify-tag --prerelease --notes "Pre-release: macOS package is ad hoc signed, not notarized. Windows package is unsigned."
+          for file in NSH-Studio-windows-x64-setup.exe NSH-Studio-windows-x64.zip NSH-Studio-macos-arm64.dmg NSH-Studio-macos-arm64.zip; do test -s "$file"; done
+          sha256sum *.exe *.zip *.dmg > SHA256SUMS.txt
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then echo "Release already exists; no changes."; exit 0; fi
+          gh release create "$TAG" *.exe *.zip *.dmg SHA256SUMS.txt --repo "$GITHUB_REPOSITORY" --target "$SOURCE_SHA" --title "Native Shell Studio $TAG" --prerelease --notes "First preview release. Windows installer is unsigned; macOS application is ad hoc signed and not notarized. Requires Windows 10 1809+ or macOS 14+ (Apple Silicon). See README and SHA256SUMS.txt."

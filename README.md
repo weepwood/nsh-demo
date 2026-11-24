@@ -35,7 +35,7 @@ nsh package --target web -o dist
 
 GitHub Pages 目标地址：https://weepwood.github.io/nsh-demo/ 。需仓库 Settings → Pages → Source 设为 GitHub Actions；首次部署以 Actions 状态为准。
 
-CI 构建、测试与发行见 .github/workflows。未公证的 macOS 包可能被 Gatekeeper 阻止。原生实际视觉与性能以真机测试为准。
+CI 构建、测试与发行见 .github/workflows。main 推送触发版本检查：仅在类型检查、构建、测试与 Windows/macOS 安装包均成功后发布当前版本，已发布版本不会被覆盖。Windows 提供 Inno Setup EXE 与便携 ZIP；macOS Apple Silicon 提供 DMG 与 APP ZIP。未公证的 macOS 包可能被 Gatekeeper 阻止，Windows 安装包未签名。原生实际视觉与性能以真机测试为准。
 
 ## 结构
 
