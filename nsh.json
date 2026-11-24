@@ -1,0 +1,31 @@
+{
+  "name": "Native Shell Studio",
+  "id": "com.weepwood.nshdemo",
+  "version": "0.1.0",
+  "build": 1,
+  "nsh": ">=0.6.1, <0.7.0",
+  "appearance": "system",
+  "theme": "theme.json",
+  "window": {
+    "title": "Native Shell Studio",
+    "defaultSize": {
+      "width": 1280,
+      "height": 800
+    },
+    "minSize": {
+      "width": 800,
+      "height": 560
+    }
+  },
+  "web": {
+    "base": "/nsh-demo/"
+  },
+  "capabilities": {
+    "clipboard": true,
+    "windows": {
+      "kinds": [
+        "normal"
+      ]
+    }
+  }
+}

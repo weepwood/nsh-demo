@@ -1,0 +1,3 @@
+# Development rules
+
+Use NSH v0.6.1 and official v0.6.1 docs. Read [coding guides](https://nsh.dev/docs/coding-guides) and [design guides](https://nsh.dev/docs/design-guides). No React, DOM, WebView application shell, or React hooks. A component body runs once; bindings track signals. Keep stable keys; dispose page-owned side effects; preserve accessibility and semantic tokens. Use the app-owned src/ui wrappers. Run nsh check, nsh test, nsh build. Verify screenshots and real interactions separately on each target. Never claim unrun checks passed. Commit messages in Chinese. Keep capabilities minimal. Do not commit .nsh or packaged binaries.
