@@ -2,6 +2,11 @@
   "extends": "./.nsh/tsconfig.json",
   "include": [
     "**/*.ts",
-    "**/*.tsx"
-  ]
+    "**/*.tsx",
+    ".nsh/types/nsh/globals.d.ts",
+    ".nsh/types/nsh/assets.d.ts"
+  ],
+  "compilerOptions": {
+    "resolveJsonModule": true
+  }
 }

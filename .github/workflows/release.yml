@@ -73,4 +73,4 @@ jobs:
         run: |
           cd release
           sha256sum *.zip > SHA256SUMS.txt
-          gh release create "$GITHUB_REF_NAME" *.zip SHA256SUMS.txt --repo "$GITHUB_REPOSITORY" --verify-tag --generate-notes --prerelease --notes "Pre-release: macOS package is ad hoc signed, not notarized. Windows package is unsigned."
+          gh release create "$GITHUB_REF_NAME" *.zip SHA256SUMS.txt --repo "$GITHUB_REPOSITORY" --verify-tag --prerelease --notes "Pre-release: macOS package is ad hoc signed, not notarized. Windows package is unsigned."

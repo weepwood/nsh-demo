@@ -11,6 +11,6 @@ export function Overview(){
         {item=><View class="flex-row items-center justify-between border-b border-border py-2"><Text class="text-sm text-muted-foreground">{item().label}</Text><Text class="text-sm font-medium text-foreground">{item().value()}</Text></View>}
       </Each>
     </Panel></Section>
-    <Section title="Explore"><Panel><Action label="Themes" variant="ghost" onPress={()=>navigate("Themes")}/><Action label="Motion" variant="ghost" onPress={()=>navigate("Motion")}/><Action label="Native APIs" variant="ghost" onPress={()=>navigate("Native APIs")}/></Panel></Section>
+    <Section title="Explore"><Panel><Action label="Explore themes" variant="ghost" onPress={()=>navigate("Themes")}/><Action label="Explore motion" variant="ghost" onPress={()=>navigate("Motion")}/><Action label="Explore native APIs" variant="ghost" onPress={()=>navigate("Native APIs")}/></Panel></Section>
   </View>;
 }

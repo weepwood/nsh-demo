@@ -27,7 +27,8 @@
       "sidebar-foreground": "#24272c",
       "sidebar-border": "#dfe2e6",
       "success": "#28734c",
-      "warning": "#926015"
+      "warning": "#926015",
+      "destructive-foreground": "#ffffff"
     },
     "dark": {
       "background": "#17191d",
@@ -52,7 +53,8 @@
       "sidebar-foreground": "#e5e7eb",
       "sidebar-border": "#343941",
       "success": "#75c59a",
-      "warning": "#e6b769"
+      "warning": "#e6b769",
+      "destructive-foreground": "#251015"
     }
   }
 }

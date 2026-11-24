@@ -8,7 +8,7 @@ export function Action(p: { label: string; onPress: () => void; variant?: Varian
   return <Button disabled={p.disabled} selected={p.selected} onPress={p.onPress}
     class="self-start items-center justify-center rounded-md border border-transparent transition-colors duration-150 motion-reduce:transition-none active:opacity-70 disabled:opacity-40 focus-visible:ring-2 focus-visible:ring-ring"
     classList={{"bg-primary":!p.variant||p.variant==="primary","bg-secondary":p.variant==="secondary","border-border":p.variant==="outline","hover:bg-accent":p.variant==="outline"||p.variant==="ghost"||p.variant==="secondary","bg-destructive":p.variant==="danger","bg-accent":!!p.selected,"h-7 px-2":p.size==="sm","h-8 px-3":!p.size||p.size==="md","h-10 px-4":p.size==="lg"}}>
-    <Text class={p.variant==="danger"?"text-sm font-medium text-white":!p.variant||p.variant==="primary"?"text-sm font-medium text-primary-foreground":"text-sm font-medium text-foreground"}>{p.label}</Text>
+    <Text class={p.variant==="danger"?"text-sm font-medium text-destructive-foreground":!p.variant||p.variant==="primary"?"text-sm font-medium text-primary-foreground":"text-sm font-medium text-foreground"}>{p.label}</Text>
   </Button>;
 }
 export function NavItem(p:{label:string; selected:boolean; onPress:()=>void}) {
